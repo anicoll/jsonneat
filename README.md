@@ -20,22 +20,6 @@ Or using go directly:
 go build -o jsonneat
 ```
 
-## Development
-
-This project includes a Makefile for common development tasks:
-
-```bash
-make help           # Show all available targets
-make build          # Build the binary
-make test           # Run all tests
-make test-coverage  # Run tests with coverage report
-make fmt            # Format code
-make vet            # Run go vet
-make clean          # Remove build artifacts
-make install        # Install to GOPATH/bin
-make all            # Run fmt, vet, test, and build
-```
-
 ## Usage
 
 ```bash
