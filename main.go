@@ -128,10 +128,13 @@ func processFile(filePath string, inPlace bool) error {
 	cleaned := sorter.CleanupWhitespace(sorted)
 
 	if inPlace {
-		if err := os.WriteFile(filePath, []byte(cleaned), 0644); err != nil {
-			return fmt.Errorf("writing file: %w", err)
+		// Only write and report if the file actually changed
+		if cleaned != string(content) {
+			if err := os.WriteFile(filePath, []byte(cleaned), 0644); err != nil {
+				return fmt.Errorf("writing file: %w", err)
+			}
+			fmt.Printf("Formatted %s\n", filePath)
 		}
-		fmt.Printf("Formatted %s\n", filePath)
 	} else {
 		fmt.Print(cleaned)
 	}
