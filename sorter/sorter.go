@@ -54,7 +54,7 @@ func SortJsonnet(content string) (string, error) {
 	result := make([]string, 0, len(lines))
 
 	var currentBlock []arrayElement
-	var arrayStartPrefix string  // Stores the prefix like "PR: [" for inline arrays
+	var arrayStartPrefix string // Stores the prefix like "PR: [" for inline arrays
 	inArray := false
 	parenDepth := 0
 	bracketDepth := 0
@@ -101,7 +101,7 @@ func SortJsonnet(content string) (string, error) {
 				if arrayStartPrefix != "" {
 					// First sorted element goes on the same line as the prefix
 					firstElem := strings.TrimSpace(sortedBlock[0])
-					result = append(result, arrayStartPrefix + " " + firstElem)
+					result = append(result, arrayStartPrefix+" "+firstElem)
 					sortedBlock = sortedBlock[1:]
 					arrayStartPrefix = ""
 				}
@@ -122,7 +122,7 @@ func SortJsonnet(content string) (string, error) {
 
 		if arrayStartPrefix != "" {
 			firstElem := strings.TrimSpace(sortedBlock[0])
-			result = append(result, arrayStartPrefix + " " + firstElem)
+			result = append(result, arrayStartPrefix+" "+firstElem)
 			sortedBlock = sortedBlock[1:]
 		}
 
