@@ -146,6 +146,123 @@ local second = [
   zoo.africa.zebra,
 ];`,
 		},
+		{
+			name: "ComplexMultiLineObjects",
+			input: `local species = {
+  mammals: [
+    species.cat,  // Feline species
+    species.elephant,  // Largest land animal
+    species.bat,  // Flying mammal
+  ],
+  birds: [
+    birds.penguin,  // Flightless bird
+    birds.eagle,  // Bird of prey
+    birds.canary,  // Song bird
+  ],
+};`,
+			expected: `local species = {
+  mammals: [
+    species.bat,  // Flying mammal
+    species.cat,  // Feline species
+    species.elephant,  // Largest land animal
+  ],
+  birds: [
+    birds.canary,  // Song bird
+    birds.eagle,  // Bird of prey
+    birds.penguin,  // Flightless bird
+  ],
+};`,
+		},
+		{
+			name: "FunctionCallParameters",
+			input: `{
+  TEAM_A: {
+    name: 'team-a',
+    description: 'Team A description',
+    include: combineMembers(
+      team.resources.team_a_members.include,
+      team.resources.team_a_engineers.include,
+    ),
+  },
+}`,
+			expected: `{
+  TEAM_A: {
+    name: 'team-a',
+    description: 'Team A description',
+    include: combineMembers(
+      team.resources.team_a_members.include,
+      team.resources.team_a_engineers.include,
+    ),
+  },
+}`,
+		},
+		{
+			name: "RealWorldComplexExample",
+			input: `{
+  TEAM_ZEBRA: {
+    azuread: { name: 'TEAM_ZEBRA' },
+    github: { name: 'team-zebra' },
+    description: 'Zebra team members',
+    include: combineMembers(
+      org.resources.team_zebra_members.include,
+      org.resources.team_zebra_engineers.include,
+    ),
+  },
+
+  TEAM_ALPHA: {
+    azuread: { name: 'TEAM_ALPHA' },
+    github: { name: 'team-alpha' },
+    description: 'Alpha team members',
+    include: combineMembers(
+      org.resources.team_alpha_members.include,
+      org.resources.team_alpha_engineers.include,
+    ),
+  },
+
+  TEAM_BETA: {
+    azuread: { name: 'TEAM_BETA' },
+    github: { name: 'team-beta' },
+    description: 'Beta team members',
+    include: [
+      org.resources.team_beta_member_3,
+      org.resources.team_beta_member_1,
+      org.resources.team_beta_member_2,
+    ],
+  },
+}`,
+			expected: `{
+  TEAM_ZEBRA: {
+    azuread: { name: 'TEAM_ZEBRA' },
+    github: { name: 'team-zebra' },
+    description: 'Zebra team members',
+    include: combineMembers(
+      org.resources.team_zebra_members.include,
+      org.resources.team_zebra_engineers.include,
+    ),
+  },
+
+  TEAM_ALPHA: {
+    azuread: { name: 'TEAM_ALPHA' },
+    github: { name: 'team-alpha' },
+    description: 'Alpha team members',
+    include: combineMembers(
+      org.resources.team_alpha_members.include,
+      org.resources.team_alpha_engineers.include,
+    ),
+  },
+
+  TEAM_BETA: {
+    azuread: { name: 'TEAM_BETA' },
+    github: { name: 'team-beta' },
+    description: 'Beta team members',
+    include: [
+      org.resources.team_beta_member_1,
+      org.resources.team_beta_member_2,
+      org.resources.team_beta_member_3,
+    ],
+  },
+}`,
+		},
 	}
 
 	for _, tt := range tests {
