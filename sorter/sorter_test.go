@@ -1,0 +1,314 @@
+package sorter
+
+import (
+	"testing"
+)
+
+func TestSortJsonnet(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name: "BasicSorting",
+			input: `local items = [
+  third,
+  first,
+  second,
+];`,
+			expected: `local items = [
+  first,
+  second,
+  third,
+];`,
+		},
+		{
+			name: "SortingWithComments",
+			input: `local animals = [
+  tiger,  # Big cat
+  elephant,  # Large mammal
+  antelope,  # Swift runner
+];`,
+			expected: `local animals = [
+  antelope,  # Swift runner
+  elephant,  # Large mammal
+  tiger,  # Big cat
+];`,
+		},
+		{
+			name: "AlreadySorted",
+			input: `local items = [
+  alpha,
+  bravo,
+  charlie,
+];`,
+			expected: `local items = [
+  alpha,
+  bravo,
+  charlie,
+];`,
+		},
+		{
+			name: "SingleElement",
+			input: `local items = [
+  single,
+];`,
+			expected: `local items = [
+  single,
+];`,
+		},
+		{
+			name: "MultipleArrays",
+			input: `local first = [
+  zebra,
+  alpha,
+];
+
+local second = [
+  beta,
+  gamma,
+  alpha,
+];`,
+			expected: `local first = [
+  alpha,
+  zebra,
+];
+
+local second = [
+  alpha,
+  beta,
+  gamma,
+];`,
+		},
+		{
+			name: "PreserveNonArrayLines",
+			input: `local config = {
+  name: "test",
+  items: [
+    zebra,
+    alpha,
+  ],
+  other: "value",
+};`,
+			expected: `local config = {
+  name: "test",
+  items: [
+    alpha,
+    zebra,
+  ],
+  other: "value",
+};`,
+		},
+		{
+			name: "CaseInsensitiveSorting",
+			input: `local items = [
+  Zebra,
+  alpha,
+  Charlie,
+];`,
+			expected: `local items = [
+  alpha,
+  Charlie,
+  Zebra,
+];`,
+		},
+		{
+			name: "SortingWithSlashComments",
+			input: `local items = [
+  third,  // Third item
+  first,  // First item
+  second,  // Second item
+];`,
+			expected: `local items = [
+  first,  // First item
+  second,  // Second item
+  third,  // Third item
+];`,
+		},
+		{
+			name: "EmptyArray",
+			input: `local items = [
+];`,
+			expected: `local items = [
+];`,
+		},
+		{
+			name: "NestedPathsSorting",
+			input: `local animals = [
+  zoo.africa.zebra,
+  zoo.africa.elephant,
+  zoo.africa.lion,
+];`,
+			expected: `local animals = [
+  zoo.africa.elephant,
+  zoo.africa.lion,
+  zoo.africa.zebra,
+];`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := SortJsonnet(tt.input)
+			if err != nil {
+				t.Fatalf("SortJsonnet() error = %v", err)
+			}
+			if result != tt.expected {
+				t.Errorf("SortJsonnet() =\n%q\n\nwant:\n%q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestExtractSortKey(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "SimpleIdentifier",
+			input:    "  alpha,",
+			expected: "alpha",
+		},
+		{
+			name:     "WithHashComment",
+			input:    "  alpha,  # Comment here",
+			expected: "alpha",
+		},
+		{
+			name:     "WithSlashComment",
+			input:    "  alpha,  // Comment here",
+			expected: "alpha",
+		},
+		{
+			name:     "NestedPath",
+			input:    "  zoo.mammals.elephant,",
+			expected: "zoo.mammals.elephant",
+		},
+		{
+			name:     "UppercaseConvertedToLowercase",
+			input:    "  ALPHA,",
+			expected: "alpha",
+		},
+		{
+			name:     "MixedCase",
+			input:    "  AlPhA,",
+			expected: "alpha",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := extractSortKey(tt.input)
+			if result != tt.expected {
+				t.Errorf("extractSortKey(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestCleanupWhitespace(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "TrailingSpaces",
+			input:    "line one  \nline two\t\nline three   ",
+			expected: "line one\nline two\nline three\n",
+		},
+		{
+			name:     "MultipleBlankLines",
+			input:    "line one\n\n\n\nline two",
+			expected: "line one\n\n\nline two\n",
+		},
+		{
+			name:     "NoTrailingNewline",
+			input:    "line one\nline two",
+			expected: "line one\nline two\n",
+		},
+		{
+			name:     "AlreadyHasTrailingNewline",
+			input:    "line one\nline two\n",
+			expected: "line one\nline two\n",
+		},
+		{
+			name:     "EmptyString",
+			input:    "",
+			expected: "",
+		},
+		{
+			name:     "OnlyWhitespace",
+			input:    "   \n\t\n  ",
+			expected: "\n\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := CleanupWhitespace(tt.input)
+			if result != tt.expected {
+				t.Errorf("CleanupWhitespace() =\n%q\n\nwant:\n%q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestSortBlock(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    []arrayElement
+		expected []string
+	}{
+		{
+			name: "SimpleSort",
+			input: []arrayElement{
+				{original: "  charlie,", sortKey: "charlie"},
+				{original: "  alpha,", sortKey: "alpha"},
+				{original: "  bravo,", sortKey: "bravo"},
+			},
+			expected: []string{
+				"  alpha,",
+				"  bravo,",
+				"  charlie,",
+			},
+		},
+		{
+			name: "PreserveOriginalFormatting",
+			input: []arrayElement{
+				{original: "    zebra,  # Z comment", sortKey: "zebra"},
+				{original: "    alpha,  # A comment", sortKey: "alpha"},
+			},
+			expected: []string{
+				"    alpha,  # A comment",
+				"    zebra,  # Z comment",
+			},
+		},
+		{
+			name: "SingleElement",
+			input: []arrayElement{
+				{original: "  single,", sortKey: "single"},
+			},
+			expected: []string{
+				"  single,",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := sortBlock(tt.input)
+			if len(result) != len(tt.expected) {
+				t.Fatalf("sortBlock() returned %d lines, want %d", len(result), len(tt.expected))
+			}
+			for i, line := range result {
+				if line != tt.expected[i] {
+					t.Errorf("sortBlock()[%d] = %q, want %q", i, line, tt.expected[i])
+				}
+			}
+		})
+	}
+}

@@ -1,0 +1,17 @@
+# Binaries
+jsonneat
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test data
+testdata/
+test.jsonnet
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
