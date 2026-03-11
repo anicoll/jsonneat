@@ -16,6 +16,7 @@ func SortJsonnet(content string) (string, error) {
 	result := make([]string, 0, len(lines))
 
 	var currentBlock []arrayElement
+	var arrayStartPrefix string  // Stores the prefix like "PR: [" for inline arrays
 	inArray := false
 	parenDepth := 0
 	bracketDepth := 0
@@ -23,15 +24,39 @@ func SortJsonnet(content string) (string, error) {
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 
+		// Special handling for inline array start: "PR: [ element,"
+		// Split this into prefix and first element
+		if strings.Contains(line, "[") && strings.Contains(trimmed, ",") && !strings.HasPrefix(trimmed, "[") {
+			bracketIdx := strings.Index(line, "[")
+			afterBracket := line[bracketIdx+1:]
+			trimmedAfter := strings.TrimSpace(afterBracket)
+
+			// Check if there's an array element after the [
+			if trimmedAfter != "" && !strings.HasPrefix(trimmedAfter, "]") && strings.Contains(trimmedAfter, ",") {
+				// Save the prefix (everything up to and including [)
+				arrayStartPrefix = line[:bracketIdx+1]
+
+				// Process the rest as an array element
+				parenDepth += countChar(afterBracket, '(') - countChar(afterBracket, ')')
+				bracketDepth = 1
+
+				sortKey := extractSortKey(trimmedAfter)
+				// Create the element with proper indentation (match continuation lines)
+				indent := strings.Repeat(" ", len(line) - len(trimmed))
+				currentBlock = append(currentBlock, arrayElement{
+					original: indent + "      " + trimmedAfter,  // Add extra indent for continuation
+					sortKey:  sortKey,
+				})
+				inArray = true
+				continue
+			}
+		}
+
 		// Update parentheses and bracket depth for this line
 		parenDepth += countChar(line, '(') - countChar(line, ')')
 		bracketDepth += countChar(line, '[') - countChar(line, ']')
 
 		// Check if this line is an array element
-		// Only consider it an array element if:
-		// 1. We're inside square brackets (bracketDepth > 0)
-		// 2. We're not inside parentheses (parenDepth == 0)
-		// 3. It passes the isArrayLine check
 		isArrayElement := bracketDepth > 0 && parenDepth == 0 && isArrayLine(trimmed)
 
 		if isArrayElement {
@@ -46,6 +71,16 @@ func SortJsonnet(content string) (string, error) {
 			// If we were in an array block, sort and flush it
 			if inArray && len(currentBlock) > 0 {
 				sortedBlock := sortBlock(currentBlock)
+
+				// If we have an inline array prefix, reconstruct the first line
+				if arrayStartPrefix != "" {
+					// First sorted element goes on the same line as the prefix
+					firstElem := strings.TrimSpace(sortedBlock[0])
+					result = append(result, arrayStartPrefix + " " + firstElem)
+					sortedBlock = sortedBlock[1:]
+					arrayStartPrefix = ""
+				}
+
 				result = append(result, sortedBlock...)
 				currentBlock = nil
 				inArray = false
@@ -59,6 +94,13 @@ func SortJsonnet(content string) (string, error) {
 	// Flush any remaining array block
 	if len(currentBlock) > 0 {
 		sortedBlock := sortBlock(currentBlock)
+
+		if arrayStartPrefix != "" {
+			firstElem := strings.TrimSpace(sortedBlock[0])
+			result = append(result, arrayStartPrefix + " " + firstElem)
+			sortedBlock = sortedBlock[1:]
+		}
+
 		result = append(result, sortedBlock...)
 	}
 
