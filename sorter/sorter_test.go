@@ -263,6 +263,29 @@ local second = [
   },
 }`,
 		},
+		{
+			name: "InlineArrayStart",
+			input: `local viewers = {
+    PR: [ resource.zebra,
+          resource.elephant,
+          resource.antelope,
+    ] + extra.PR,
+    NP: [ resource.monkey,
+          resource.giraffe,
+          resource.bear,
+    ] + extra.NP,
+};`,
+			expected: `local viewers = {
+    PR: [ resource.antelope,
+          resource.elephant,
+          resource.zebra,
+    ] + extra.PR,
+    NP: [ resource.bear,
+          resource.giraffe,
+          resource.monkey,
+    ] + extra.NP,
+};`,
+		},
 	}
 
 	for _, tt := range tests {
