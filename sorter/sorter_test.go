@@ -286,6 +286,60 @@ local second = [
     ] + extra.NP,
 };`,
 		},
+		{
+			name: "ObjectWithInlineArray",
+			input: `{
+  TEAM_PLATFORM_CODEOWNERS: {
+    azuread: { name: 'TEAM_PLATFORM_CODEOWNERS' },
+    github: { name: 'team-platform-services' },
+    description: 'Platform Engineers who are codeowners for specific areas of the code',
+    include: [ experience.resources.platform_team ],
+  },
+}`,
+			expected: `{
+  TEAM_PLATFORM_CODEOWNERS: {
+    azuread: { name: 'TEAM_PLATFORM_CODEOWNERS' },
+    github: { name: 'team-platform-services' },
+    description: 'Platform Engineers who are codeowners for specific areas of the code',
+    include: [ experience.resources.platform_team ],
+  },
+}`,
+		},
+		{
+			name: "MultipleObjectsWithInlineArrays",
+			input: `{
+  OUTER_OBJECT: {
+    TEAM_ONE: {
+      azuread: { name: 'TEAM_ONE_AD' },
+      github: { name: 'team-one-gh' },
+      description: 'Team one description',
+      include: [ resources.team_one ],
+    },
+    TEAM_TWO: {
+      azuread: { name: 'TEAM_TWO_AD' },
+      github: { name: 'team-two-gh' },
+      description: 'Team two description',
+      include: [ resources.team_two ],
+    },
+  },
+}`,
+			expected: `{
+  OUTER_OBJECT: {
+    TEAM_ONE: {
+      azuread: { name: 'TEAM_ONE_AD' },
+      github: { name: 'team-one-gh' },
+      description: 'Team one description',
+      include: [ resources.team_one ],
+    },
+    TEAM_TWO: {
+      azuread: { name: 'TEAM_TWO_AD' },
+      github: { name: 'team-two-gh' },
+      description: 'Team two description',
+      include: [ resources.team_two ],
+    },
+  },
+}`,
+		},
 	}
 
 	for _, tt := range tests {

@@ -10,6 +10,44 @@ type arrayElement struct {
 	sortKey  string
 }
 
+type inlineArrayInfo struct {
+	hasInlineArray bool
+	prefix         string
+	firstElement   string
+	indent         string
+}
+
+// detectInlineArray checks if a line contains an inline array start like "PR: [ element,"
+// Returns info about the inline array, or nil if not detected or if array closes on same line
+func detectInlineArray(line, trimmed string) *inlineArrayInfo {
+	// Must contain [ and comma, but not start with [
+	if !strings.Contains(line, "[") || !strings.Contains(trimmed, ",") || strings.HasPrefix(trimmed, "[") {
+		return nil
+	}
+
+	bracketIdx := strings.Index(line, "[")
+	afterBracket := line[bracketIdx+1:]
+	trimmedAfter := strings.TrimSpace(afterBracket)
+
+	// Check if array also closes on same line - if so, don't treat as multi-line
+	if strings.Contains(afterBracket, "]") {
+		return nil
+	}
+
+	// Check if there's an array element after the [
+	if trimmedAfter != "" && !strings.HasPrefix(trimmedAfter, "]") && strings.Contains(trimmedAfter, ",") {
+		indent := strings.Repeat(" ", len(line)-len(trimmed))
+		return &inlineArrayInfo{
+			hasInlineArray: true,
+			prefix:         line[:bracketIdx+1],
+			firstElement:   trimmedAfter,
+			indent:         indent,
+		}
+	}
+
+	return nil
+}
+
 // SortJsonnet sorts array elements in jsonnet files alphabetically
 func SortJsonnet(content string) (string, error) {
 	lines := strings.Split(content, "\n")
@@ -24,32 +62,19 @@ func SortJsonnet(content string) (string, error) {
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 
-		// Special handling for inline array start: "PR: [ element,"
-		// Split this into prefix and first element
-		if strings.Contains(line, "[") && strings.Contains(trimmed, ",") && !strings.HasPrefix(trimmed, "[") {
-			bracketIdx := strings.Index(line, "[")
-			afterBracket := line[bracketIdx+1:]
-			trimmedAfter := strings.TrimSpace(afterBracket)
+		// Check for inline array start like "PR: [ element,"
+		if info := detectInlineArray(line, trimmed); info != nil {
+			arrayStartPrefix = info.prefix
+			afterBracket := line[len(info.prefix):]
+			parenDepth += countChar(afterBracket, '(') - countChar(afterBracket, ')')
+			bracketDepth = 1
 
-			// Check if there's an array element after the [
-			if trimmedAfter != "" && !strings.HasPrefix(trimmedAfter, "]") && strings.Contains(trimmedAfter, ",") {
-				// Save the prefix (everything up to and including [)
-				arrayStartPrefix = line[:bracketIdx+1]
-
-				// Process the rest as an array element
-				parenDepth += countChar(afterBracket, '(') - countChar(afterBracket, ')')
-				bracketDepth = 1
-
-				sortKey := extractSortKey(trimmedAfter)
-				// Create the element with proper indentation (match continuation lines)
-				indent := strings.Repeat(" ", len(line) - len(trimmed))
-				currentBlock = append(currentBlock, arrayElement{
-					original: indent + "      " + trimmedAfter,  // Add extra indent for continuation
-					sortKey:  sortKey,
-				})
-				inArray = true
-				continue
-			}
+			currentBlock = append(currentBlock, arrayElement{
+				original: info.indent + "      " + info.firstElement,
+				sortKey:  extractSortKey(info.firstElement),
+			})
+			inArray = true
+			continue
 		}
 
 		// Update parentheses and bracket depth for this line
@@ -108,13 +133,7 @@ func SortJsonnet(content string) (string, error) {
 }
 
 func countChar(s string, c rune) int {
-	count := 0
-	for _, ch := range s {
-		if ch == c {
-			count++
-		}
-	}
-	return count
+	return strings.Count(s, string(c))
 }
 
 func isArrayLine(line string) bool {
@@ -123,73 +142,61 @@ func isArrayLine(line string) bool {
 	}
 
 	// Skip comment-only lines
-	if strings.HasPrefix(line, "//") || strings.HasPrefix(line, "/*") || strings.HasPrefix(line, "*") {
+	commentPrefixes := []string{"//", "/*", "*"}
+	for _, prefix := range commentPrefixes {
+		if strings.HasPrefix(line, prefix) {
+			return false
+		}
+	}
+
+	// Skip structural lines
+	structuralPrefixes := []string{"[", "{", "]", "}"}
+	for _, prefix := range structuralPrefixes {
+		if strings.HasPrefix(line, prefix) {
+			return false
+		}
+	}
+
+	// Must contain comma before any comment
+	commaIdx := strings.Index(line, ",")
+	if commaIdx == -1 {
 		return false
 	}
 
-	// Skip lines that are structural (brackets, braces)
-	if strings.HasPrefix(line, "[") || strings.HasPrefix(line, "{") ||
-		strings.HasPrefix(line, "]") || strings.HasPrefix(line, "}") {
-		return false
-	}
-
-	// Check if line contains a comma (before or after any comment)
-	hasComma := strings.Contains(line, ",")
-	if !hasComma {
-		return false
-	}
-
-	// Make sure the comma comes before any comment
 	hashIdx := strings.Index(line, "#")
 	slashIdx := strings.Index(line, "//")
-	commaIdx := strings.Index(line, ",")
 
-	// If there's a hash comment, comma must come before it
-	if hashIdx != -1 && commaIdx > hashIdx {
+	if (hashIdx != -1 && commaIdx > hashIdx) || (slashIdx != -1 && commaIdx > slashIdx) {
 		return false
 	}
 
-	// If there's a slash comment, comma must come before it
-	if slashIdx != -1 && commaIdx > slashIdx {
-		return false
-	}
-
-	// Skip object/array structure lines like "],", "},", etc.
-	codeBeforeComment := line
-	if hashIdx != -1 {
-		codeBeforeComment = line[:hashIdx]
-	}
-	if slashIdx != -1 && (hashIdx == -1 || slashIdx < hashIdx) {
-		codeBeforeComment = line[:slashIdx]
-	}
-	codeBeforeComment = strings.TrimSpace(codeBeforeComment)
-
-	if codeBeforeComment == "]," || codeBeforeComment == "}," ||
-		codeBeforeComment == "]" || codeBeforeComment == "}" {
-		return false
+	// Skip structural closing lines like "],", "},", etc.
+	codeOnly := stripComment(line)
+	structuralClosings := []string{"],", "},", "]", "}"}
+	for _, closing := range structuralClosings {
+		if codeOnly == closing {
+			return false
+		}
 	}
 
 	return true
 }
 
-func extractSortKey(line string) string {
-	// Remove leading/trailing whitespace
-	line = strings.TrimSpace(line)
-
-	// Split on comment markers to get just the code part
+// stripComment removes comments and trailing commas from a line
+func stripComment(line string) string {
+	// Remove comments
 	if idx := strings.Index(line, "//"); idx != -1 {
 		line = line[:idx]
 	}
 	if idx := strings.Index(line, "#"); idx != -1 {
 		line = line[:idx]
 	}
+	return strings.TrimSpace(line)
+}
 
-	// Trim again to remove trailing spaces before comment
-	line = strings.TrimSpace(line)
-
-	// Remove trailing comma
+func extractSortKey(line string) string {
+	line = stripComment(strings.TrimSpace(line))
 	line = strings.TrimSuffix(line, ",")
-
 	return strings.ToLower(line)
 }
 
