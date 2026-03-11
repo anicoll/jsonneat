@@ -17,12 +17,22 @@ func SortJsonnet(content string) (string, error) {
 
 	var currentBlock []arrayElement
 	inArray := false
+	parenDepth := 0
+	bracketDepth := 0
 
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 
-		// Check if this line is an array element (ends with comma, possibly with comment)
-		isArrayElement := isArrayLine(trimmed)
+		// Update parentheses and bracket depth for this line
+		parenDepth += countChar(line, '(') - countChar(line, ')')
+		bracketDepth += countChar(line, '[') - countChar(line, ']')
+
+		// Check if this line is an array element
+		// Only consider it an array element if:
+		// 1. We're inside square brackets (bracketDepth > 0)
+		// 2. We're not inside parentheses (parenDepth == 0)
+		// 3. It passes the isArrayLine check
+		isArrayElement := bracketDepth > 0 && parenDepth == 0 && isArrayLine(trimmed)
 
 		if isArrayElement {
 			// Extract the sortable part (before any comment)
@@ -53,6 +63,16 @@ func SortJsonnet(content string) (string, error) {
 	}
 
 	return strings.Join(result, "\n"), nil
+}
+
+func countChar(s string, c rune) int {
+	count := 0
+	for _, ch := range s {
+		if ch == c {
+			count++
+		}
+	}
+	return count
 }
 
 func isArrayLine(line string) bool {
