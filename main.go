@@ -10,14 +10,27 @@ import (
 	"github.com/anicoll/jsonneat/validator"
 )
 
+// Version information - set via ldflags during build
+var (
+	version = "dev"
+	commit  = "unknown"
+)
+
 func main() {
 	inPlace := flag.Bool("w", false, "write result to source file instead of stdout")
+	showVersion := flag.Bool("version", false, "show version information")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("jsonneat version %s (commit: %s)\n", version, commit)
+		os.Exit(0)
+	}
 
 	args := flag.Args()
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "Usage: jsonneat [-w] <path> [paths...]")
-		fmt.Fprintln(os.Stderr, "  -w       write result to source file instead of stdout")
+		fmt.Fprintln(os.Stderr, "Usage: jsonneat [-w] [-version] <path> [paths...]")
+		fmt.Fprintln(os.Stderr, "  -w          write result to source file instead of stdout")
+		fmt.Fprintln(os.Stderr, "  -version    show version information")
 		fmt.Fprintln(os.Stderr, "")
 		fmt.Fprintln(os.Stderr, "Path can be:")
 		fmt.Fprintln(os.Stderr, "  - a specific file (e.g., file.jsonnet)")
