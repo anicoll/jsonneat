@@ -70,10 +70,13 @@ jsonneat -w ./...
 ## What it does
 
 The tool:
-1. Sorts array elements in jsonnet files alphabetically
-2. Preserves inline comments (e.g., `# Striped Zebra`)
-3. Cleans up trailing whitespace
-4. Ensures consistent file formatting
+1. Validates jsonnet syntax using [go-jsonnet](https://github.com/google/go-jsonnet) parser before processing
+2. Sorts array elements in jsonnet files alphabetically
+3. Preserves inline comments (e.g., `# Striped Zebra`)
+4. Cleans up trailing whitespace
+5. Ensures consistent file formatting
+
+If a jsonnet file has syntax errors, the tool will report the error and exit without making changes.
 
 ### Example
 
