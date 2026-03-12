@@ -2,13 +2,16 @@
 
 BINARY_NAME=jsonneat
 GO=go
+VERSION?=dev
+COMMIT?=$(shell git rev-parse --short=7 HEAD 2>/dev/null || echo "unknown")
+LDFLAGS=-ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT)"
 
 help: ## Display this help message
 	@echo "Available targets:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
 build: ## Build the binary
-	$(GO) build -o $(BINARY_NAME) .
+	$(GO) build $(LDFLAGS) -o $(BINARY_NAME) .
 
 test: ## Run all tests
 	$(GO) test -v ./...
@@ -31,7 +34,7 @@ clean: ## Remove build artifacts
 	rm -f coverage.out coverage.html
 
 install: ## Install the binary to GOPATH/bin
-	$(GO) install .
+	$(GO) install $(LDFLAGS) .
 
 run: build ## Build and run with example
 	./$(BINARY_NAME) --help

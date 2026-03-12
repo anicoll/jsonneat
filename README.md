@@ -23,12 +23,13 @@ go build -o jsonneat
 ## Usage
 
 ```bash
-jsonneat [-w] <path> [paths...]
+jsonneat [-w] [-version] <path> [paths...]
 ```
 
 ### Options
 
 - `-w` - Write result to source file instead of stdout
+- `-version` - Show version information (git commit hash)
 
 ### Path Arguments
 
@@ -39,6 +40,12 @@ The tool accepts various path formats:
 - **Recursive search**: `jsonneat ./...` or `jsonneat ./configs/...`
 
 ### Examples
+
+Check version:
+```bash
+jsonneat -version
+# Output: jsonneat version dev (commit: ef546a4)
+```
 
 Sort and print to stdout:
 ```bash
@@ -64,7 +71,7 @@ jsonneat -w ./...
 
 The tool:
 1. Sorts array elements in jsonnet files alphabetically
-2. Preserves inline comments (e.g., `# Andrew Nicoll`)
+2. Preserves inline comments (e.g., `# Striped Zebra`)
 3. Cleans up trailing whitespace
 4. Ensures consistent file formatting
 
