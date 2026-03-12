@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/anicoll/jsonneat/sorter"
+	"github.com/anicoll/jsonneat/validator"
 )
 
 func main() {
@@ -117,6 +118,11 @@ func processFile(filePath string, inPlace bool) error {
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("reading file: %w", err)
+	}
+
+	// Validate jsonnet syntax before sorting
+	if err := validator.ValidateJsonnet(string(content), filePath); err != nil {
+		return fmt.Errorf("validation failed: %w", err)
 	}
 
 	sorted, err := sorter.SortJsonnet(string(content))
